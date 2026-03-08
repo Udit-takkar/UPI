@@ -36,9 +36,16 @@ export async function runConsumer(
     eachMessage: async (payload: EachMessagePayload) => {
       const { message, partition, topic: msgTopic } = payload;
       try {
-        const value = message.value
-          ? JSON.parse(message.value.toString())
-          : null;
+        let value: unknown = null;
+        if (message.value) {
+          try {
+            value = JSON.parse(message.value.toString());
+          } catch {
+            throw new Error(
+              `Malformed JSON in message at ${msgTopic}:${partition}:${message.offset}`,
+            );
+          }
+        }
         await handler({
           key: message.key?.toString() ?? null,
           value,
@@ -47,22 +54,32 @@ export async function runConsumer(
         });
       } catch (err) {
         if (dlqProducer) {
-          await dlqProducer.send({
-            topic: TOPICS.DLQ,
-            compression: CompressionTypes.GZIP,
-            messages: [
-              {
-                key: message.key,
-                value: JSON.stringify({
-                  originalTopic: msgTopic,
-                  partition,
-                  offset: message.offset,
-                  error: err instanceof Error ? err.message : String(err),
-                  payload: message.value?.toString(),
-                }),
-              },
-            ],
-          });
+          try {
+            await dlqProducer.send({
+              topic: TOPICS.DLQ,
+              compression: CompressionTypes.GZIP,
+              messages: [
+                {
+                  key: message.key,
+                  value: JSON.stringify({
+                    originalTopic: msgTopic,
+                    partition,
+                    offset: message.offset,
+                    error: err instanceof Error ? err.message : String(err),
+                    payload: message.value?.toString(),
+                  }),
+                },
+              ],
+            });
+          } catch (dlqErr) {
+            console.error("Failed to send to DLQ", {
+              originalTopic: msgTopic,
+              partition,
+              offset: message.offset,
+              dlqError: dlqErr instanceof Error ? dlqErr.message : String(dlqErr),
+              originalError: err instanceof Error ? err.message : String(err),
+            });
+          }
         }
       }
       await consumer.commitOffsets([

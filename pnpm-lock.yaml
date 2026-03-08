@@ -162,6 +162,46 @@ importers:
         specifier: 5.9.2
         version: 5.9.2
 
+  packages/orchestrator:
+    dependencies:
+      '@repo/shared':
+        specifier: workspace:*
+        version: link:../shared
+      drizzle-orm:
+        specifier: ^0.45.1
+        version: 0.45.1(@types/pg@8.18.0)(gel@2.2.0)(pg@8.20.0)
+      ioredis:
+        specifier: ^5.10.0
+        version: 5.10.0
+      kafkajs:
+        specifier: ^2.2.4
+        version: 2.2.4
+      pg:
+        specifier: ^8.13.1
+        version: 8.20.0
+      pino:
+        specifier: ^10.3.1
+        version: 10.3.1
+      zod:
+        specifier: '4'
+        version: 4.3.6
+    devDependencies:
+      '@repo/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.19.13
+      '@types/pg':
+        specifier: ^8.11.11
+        version: 8.18.0
+      tsx:
+        specifier: ^4.19.4
+        version: 4.21.0
+      typescript:
+        specifier: 5.9.2
+        version: 5.9.2
+
   packages/shared:
     dependencies:
       drizzle-orm:
@@ -198,6 +238,9 @@ importers:
       drizzle-kit:
         specifier: ^0.31.9
         version: 0.31.9
+      tsx:
+        specifier: ^4.19.4
+        version: 4.21.0
       typescript:
         specifier: 5.9.2
         version: 5.9.2
@@ -231,6 +274,46 @@ importers:
       eslint:
         specifier: ^9.39.1
         version: 9.39.3
+      typescript:
+        specifier: 5.9.2
+        version: 5.9.2
+
+  packages/vpa-registry:
+    dependencies:
+      '@repo/shared':
+        specifier: workspace:*
+        version: link:../shared
+      drizzle-orm:
+        specifier: ^0.45.1
+        version: 0.45.1(@types/pg@8.18.0)(gel@2.2.0)(pg@8.20.0)
+      fastify:
+        specifier: ^5.3.3
+        version: 5.8.2
+      ioredis:
+        specifier: ^5.10.0
+        version: 5.10.0
+      lru-cache:
+        specifier: ^11.1.0
+        version: 11.2.6
+      pg:
+        specifier: ^8.13.1
+        version: 8.20.0
+      pino:
+        specifier: ^10.3.1
+        version: 10.3.1
+    devDependencies:
+      '@repo/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.19.13
+      '@types/pg':
+        specifier: ^8.11.11
+        version: 8.18.0
+      tsx:
+        specifier: ^4.19.4
+        version: 4.21.0
       typescript:
         specifier: 5.9.2
         version: 5.9.2
@@ -1852,6 +1935,10 @@ packages:
 
   loose-envify@1.4.0:
     resolution: {integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==}
+
+  lru-cache@11.2.6:
+    resolution: {integrity: sha512-ESL2CrkS/2wTPfuend7Zhkzo2u0daGJ/A2VucJOgQ/C48S/zB8MMeMHSGKYpXhIjbPxfuezITkaBH1wqv00DDQ==}
+    engines: {node: 20 || >=22}
 
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
@@ -3960,6 +4047,8 @@ snapshots:
   loose-envify@1.4.0:
     dependencies:
       js-tokens: 4.0.0
+
+  lru-cache@11.2.6: {}
 
   math-intrinsics@1.1.0: {}
 

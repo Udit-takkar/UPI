@@ -1,3 +1,5 @@
+import type { Database } from './index.js';
+
 import type {
   transactions,
   txnAuditLog,
@@ -53,3 +55,5 @@ export type CallbackStatus = PendingCallback['status'];
 export type DisputeType = Dispute['disputeType'];
 export type DisputeStatus = Dispute['status'];
 export type SettlementStatus = SettlementBatch['status'];
+
+export type DrizzleTransaction = Parameters<Parameters<Database["transaction"]>[0]>[0];

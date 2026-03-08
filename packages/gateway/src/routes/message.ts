@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import type pino from "pino";
 import { sendMessage } from "@repo/shared/kafka";
 import { TOPICS } from "@repo/shared/kafka";
+import { ValidationError } from "@repo/shared/errors";
 import type { GatewayDeps } from "../deps.js";
 import type { OrgCache } from "../hooks/org-cache.js";
 import type { MessageEnvelope } from "../hooks/auth-pipeline.js";
@@ -28,7 +29,7 @@ export async function messageRoute(app: FastifyInstance, opts: MessageRouteOpts)
     const envelope = request.body as MessageEnvelope;
     const topic = MSG_TYPE_TO_TOPIC[envelope.msgType];
     if (!topic) {
-      return reply.status(400).send({ error: `No topic for message type: ${envelope.msgType}` });
+      throw new ValidationError(`No topic for message type: ${envelope.msgType}`);
     }
 
     await sendMessage(

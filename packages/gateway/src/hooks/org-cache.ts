@@ -12,8 +12,8 @@ export interface OrgCache {
 }
 
 export function createOrgCache(db: Database, logger: pino.Logger): OrgCache {
-  const byOrgId = new Map<string, RegisteredOrg>();
-  const byFingerprint = new Map<string, RegisteredOrg>();
+  let byOrgId = new Map<string, RegisteredOrg>();
+  let byFingerprint = new Map<string, RegisteredOrg>();
   let timer: ReturnType<typeof setInterval> | null = null;
 
   async function refresh() {
@@ -23,14 +23,16 @@ export function createOrgCache(db: Database, logger: pino.Logger): OrgCache {
         .from(schema.registeredOrgs)
         .where(eq(schema.registeredOrgs.status, "ACTIVE"));
 
-      byOrgId.clear();
-      byFingerprint.clear();
+      const newByOrgId = new Map<string, RegisteredOrg>();
+      const newByFingerprint = new Map<string, RegisteredOrg>();
       for (const org of orgs) {
-        byOrgId.set(org.orgId, org);
+        newByOrgId.set(org.orgId, org);
         if (org.mtlsCertFingerprint) {
-          byFingerprint.set(org.mtlsCertFingerprint, org);
+          newByFingerprint.set(org.mtlsCertFingerprint, org);
         }
       }
+      byOrgId = newByOrgId;
+      byFingerprint = newByFingerprint;
       logger.info({ count: orgs.length }, "Org cache refreshed");
     } catch (err) {
       logger.error(err, "Failed to refresh org cache");

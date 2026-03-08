@@ -1,15 +1,19 @@
 import { uuidv7 } from "uuidv7";
+import { randomInt } from "node:crypto";
 
 export function generateTxnId(): string {
   return uuidv7();
 }
 
+let rrnCounter = randomInt(0, 100_000);
+
 export function generateRrn(): string {
   const now = new Date();
-  const prefix =
-    String(now.getFullYear()).slice(2) +
-    String(now.getMonth() + 1).padStart(2, "0") +
-    String(now.getDate()).padStart(2, "0");
-  const suffix = String(Math.floor(Math.random() * 1_000_000)).padStart(6, "0");
-  return prefix + suffix;
+  const startOfYear = new Date(now.getFullYear(), 0, 0);
+  const julianDay = Math.floor((now.getTime() - startOfYear.getTime()) / 86_400_000);
+  const dayStr = String(julianDay).padStart(3, "0");
+  const yy = String(now.getFullYear()).slice(2);
+  rrnCounter = (rrnCounter + 1) % 10_000_000;
+  const seq = String(rrnCounter).padStart(7, "0");
+  return yy + dayStr + seq;
 }

@@ -7,6 +7,13 @@ import {
   CollectRequestSchema,
   TxnStatusQuerySchema,
 } from "@repo/shared/schemas";
+import {
+  ValidationError,
+  AuthError,
+  ForbiddenError,
+  ConflictError,
+  RateLimitError,
+} from "@repo/shared/errors";
 import type { GatewayDeps } from "../deps.js";
 import type { OrgCache } from "./org-cache.js";
 import type { RegisteredOrg } from "@repo/shared/db/types";
@@ -38,7 +45,7 @@ export function createAuthPipeline(
 
     // 1. Parse envelope
     if (!envelope?.header || !envelope.msgType || !envelope.signature) {
-      throw { statusCode: 400, message: "Invalid message envelope" };
+      throw new ValidationError("Invalid message envelope");
     }
 
     // 2. Cert fingerprint check
@@ -53,7 +60,7 @@ export function createAuthPipeline(
       org = orgCache.getByOrgId(envelope.header.orgId);
     }
     if (!org) {
-      throw { statusCode: 401, message: "Unknown organization" };
+      throw new AuthError("Unknown organization");
     }
 
     // 4. IP whitelist
@@ -61,44 +68,49 @@ export function createAuthPipeline(
       const clientIp = request.ip;
       if (!org.ipWhitelist.includes(clientIp)) {
         logger.warn({ orgId: org.orgId, clientIp }, "IP not whitelisted");
-        throw { statusCode: 403, message: "IP not whitelisted" };
+        throw new ForbiddenError("IP not whitelisted");
       }
     }
 
     // 5. Signature verification
-    if (org.publicKeyPem) {
-      const payload = JSON.stringify(envelope.body);
-      const valid = verifySignature(org.publicKeyPem, payload, envelope.signature);
-      if (!valid) {
-        throw { statusCode: 401, message: "Invalid signature" };
-      }
+    if (!org.publicKeyPem) {
+      logger.warn({ orgId: org.orgId }, "Org has no public key configured");
+      throw new AuthError("Organization not configured for signature verification");
+    }
+    const payload = JSON.stringify(envelope.body);
+    const valid = verifySignature(org.publicKeyPem, payload, envelope.signature);
+    if (!valid) {
+      throw new AuthError("Invalid signature");
     }
 
     // 6. Timestamp freshness
     const msgTime = new Date(envelope.header.ts).getTime();
+    if (Number.isNaN(msgTime)) {
+      throw new ValidationError("Invalid timestamp format");
+    }
     const now = Date.now();
     if (Math.abs(now - msgTime) > FRESHNESS_WINDOW_MS) {
-      throw { statusCode: 400, message: "Message timestamp too old or in the future" };
+      throw new ValidationError("Message timestamp too old or in the future");
     }
 
     // 7. Message ID dedup
     const dedupKey = REDIS_KEYS.txnIdempotency(envelope.header.msgId);
     const isNew = await deps.redis.set(dedupKey, "1", "EX", 600, "NX");
     if (!isNew) {
-      throw { statusCode: 409, message: "Duplicate message ID" };
+      throw new ConflictError("Duplicate message ID");
     }
 
     // 8. Rate limiting (token bucket via Redis Lua)
     const rlKey = REDIS_KEYS.orgRateLimit(org.orgId);
     const rlResult = await checkRateLimit(deps.redis, rlKey, org.maxTps);
     if (!rlResult.allowed) {
-      throw { statusCode: 429, message: "Rate limit exceeded", retryAfterMs: rlResult.retryAfterMs };
+      throw new RateLimitError("Rate limit exceeded", rlResult.retryAfterMs);
     }
 
     // 9. Schema validation
     const validator = SCHEMA_MAP[envelope.msgType];
     if (!validator) {
-      throw { statusCode: 400, message: `Unknown message type: ${envelope.msgType}` };
+      throw new ValidationError(`Unknown message type: ${envelope.msgType}`);
     }
     const validatedBody = validator.parse(envelope.body);
 

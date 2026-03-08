@@ -4,22 +4,57 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./db": { "import": "./src/db/index.ts", "types": "./src/db/index.ts" },
-    "./db/schema": { "import": "./src/db/schema.ts", "types": "./src/db/schema.ts" },
-    "./db/types": { "import": "./src/db/types.ts", "types": "./src/db/types.ts" },
-    "./schemas": { "import": "./src/schemas/index.ts", "types": "./src/schemas/index.ts" },
-    "./redis": { "import": "./src/redis/index.ts", "types": "./src/redis/index.ts" },
-    "./kafka": { "import": "./src/kafka/index.ts", "types": "./src/kafka/index.ts" },
-    "./logger": { "import": "./src/logger/index.ts", "types": "./src/logger/index.ts" },
-    "./crypto": { "import": "./src/crypto/index.ts", "types": "./src/crypto/index.ts" },
-    "./state-machine": { "import": "./src/state-machine/index.ts", "types": "./src/state-machine/index.ts" },
-    "./response-codes": { "import": "./src/response-codes/index.ts", "types": "./src/response-codes/index.ts" }
+    "./db": {
+      "import": "./src/db/index.ts",
+      "types": "./src/db/index.ts"
+    },
+    "./db/schema": {
+      "import": "./src/db/schema.ts",
+      "types": "./src/db/schema.ts"
+    },
+    "./db/types": {
+      "import": "./src/db/types.ts",
+      "types": "./src/db/types.ts"
+    },
+    "./schemas": {
+      "import": "./src/schemas/index.ts",
+      "types": "./src/schemas/index.ts"
+    },
+    "./redis": {
+      "import": "./src/redis/index.ts",
+      "types": "./src/redis/index.ts"
+    },
+    "./kafka": {
+      "import": "./src/kafka/index.ts",
+      "types": "./src/kafka/index.ts"
+    },
+    "./logger": {
+      "import": "./src/logger/index.ts",
+      "types": "./src/logger/index.ts"
+    },
+    "./crypto": {
+      "import": "./src/crypto/index.ts",
+      "types": "./src/crypto/index.ts"
+    },
+    "./state-machine": {
+      "import": "./src/state-machine/index.ts",
+      "types": "./src/state-machine/index.ts"
+    },
+    "./response-codes": {
+      "import": "./src/response-codes/index.ts",
+      "types": "./src/response-codes/index.ts"
+    },
+    "./errors": {
+      "import": "./src/errors/index.ts",
+      "types": "./src/errors/index.ts"
+    }
   },
   "scripts": {
     "build": "tsc",
     "check-types": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed": "tsx src/seeds/seed.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.1",
@@ -35,6 +70,7 @@
     "@types/node": "^22.15.3",
     "@types/pg": "^8.11.11",
     "drizzle-kit": "^0.31.9",
+    "tsx": "^4.19.4",
     "typescript": "5.9.2"
   }
 }

@@ -1,12 +1,12 @@
 import type { FastifyInstance } from "fastify";
 import { sql } from "drizzle-orm";
-import type { GatewayDeps } from "../deps.js";
+import type { VpaRegistryDeps } from "../deps.js";
 
-export async function healthRoutes(
+export function healthRoutes(
   app: FastifyInstance,
-  opts: { deps: GatewayDeps },
+  opts: { deps: VpaRegistryDeps },
 ) {
-  app.get("/health", async () => ({ status: "ok" }));
+  app.get("/health", async () => ({ status: "ok", service: "vpa-registry" }));
 
   app.get("/ready", async (_req, reply) => {
     try {
@@ -21,6 +21,6 @@ export async function healthRoutes(
       return reply.status(503).send({ status: "not_ready", reason: "database" });
     }
 
-    return { status: "ready" };
+    return { status: "ready", service: "vpa-registry" };
   });
 }
