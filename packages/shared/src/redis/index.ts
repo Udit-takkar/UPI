@@ -20,3 +20,5 @@ export const REDIS_KEYS = {
   orgRateLimit: (orgId: string) => `rl:org:${orgId}` as const,
   txnIdempotency: (key: string) => `idem:${key}` as const,
 } as const;
+
+export { checkRateLimit, type RateLimitResult } from "./rate-limiter.js";

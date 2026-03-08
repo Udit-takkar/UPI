@@ -4,16 +4,16 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./db": "./src/db/index.ts",
-    "./db/schema": "./src/db/schema.ts",
-    "./db/types": "./src/db/types.ts",
-    "./schemas": "./src/schemas/index.ts",
-    "./redis": "./src/redis/index.ts",
-    "./kafka": "./src/kafka/index.ts",
-    "./logger": "./src/logger/index.ts",
-    "./crypto": "./src/crypto/index.ts",
-    "./state-machine": "./src/state-machine/index.ts",
-    "./response-codes": "./src/response-codes/index.ts"
+    "./db": { "import": "./src/db/index.ts", "types": "./src/db/index.ts" },
+    "./db/schema": { "import": "./src/db/schema.ts", "types": "./src/db/schema.ts" },
+    "./db/types": { "import": "./src/db/types.ts", "types": "./src/db/types.ts" },
+    "./schemas": { "import": "./src/schemas/index.ts", "types": "./src/schemas/index.ts" },
+    "./redis": { "import": "./src/redis/index.ts", "types": "./src/redis/index.ts" },
+    "./kafka": { "import": "./src/kafka/index.ts", "types": "./src/kafka/index.ts" },
+    "./logger": { "import": "./src/logger/index.ts", "types": "./src/logger/index.ts" },
+    "./crypto": { "import": "./src/crypto/index.ts", "types": "./src/crypto/index.ts" },
+    "./state-machine": { "import": "./src/state-machine/index.ts", "types": "./src/state-machine/index.ts" },
+    "./response-codes": { "import": "./src/response-codes/index.ts", "types": "./src/response-codes/index.ts" }
   },
   "scripts": {
     "build": "tsc",
