@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm --filter @repo/bank-adapter check-types)",
+      "Bash(pnpm --filter @repo/orchestrator check-types)",
+      "Bash(pnpm --filter @repo/mock-bank check-types)",
+      "Bash(pnpm --filter @repo/shared check-types)"
+    ]
+  }
+}

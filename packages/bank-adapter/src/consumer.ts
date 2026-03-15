@@ -6,12 +6,11 @@ import { createProducer } from "@repo/shared/kafka";
 import { schema } from "@repo/shared/db";
 import type { Database } from "@repo/shared/db";
 import {
-  PayMessageSchema,
-  DebitResponseSchema,
-  CreditResponseSchema,
-  ReversalResponseSchema,
+  DebitRequestSchema,
+  CreditRequestSchema,
+  ReversalRequestSchema,
 } from "./kafka-schemas.js";
-import type { TxnProcessor } from "./txn-processor.js";
+import type { BankPool } from "./bank-pool.js";
 import type pino from "pino";
 
 const MAX_RETRIES = 3;
@@ -65,7 +64,7 @@ async function withRetry(
 function createHandler<T>(opts: {
   prefix: string;
   schema: { parse: (data: unknown) => T };
-  process: (parsed: T, key: string | null) => Promise<void>;
+  process: (parsed: T) => Promise<void>;
   label: string;
   db: Database;
   logger: pino.Logger;
@@ -77,7 +76,7 @@ function createHandler<T>(opts: {
       withRetry(async () => {
         const parsed = opts.schema.parse(value);
         opts.logger.info({ txnKey: key }, `Processing ${opts.label}`);
-        await opts.process(parsed, key);
+        await opts.process(parsed);
       }, opts.logger, `${opts.label} key=${key}`),
     );
   };
@@ -85,68 +84,56 @@ function createHandler<T>(opts: {
 
 export async function startConsumers(
   kafka: Kafka,
-  processor: TxnProcessor,
+  bankPool: BankPool,
   db: Database,
   logger: pino.Logger,
 ) {
   const dlqProducer = await createProducer(kafka);
 
-  const payConsumer = await createConsumer(kafka, "orchestrator-pay");
-  const debitRespConsumer = await createConsumer(kafka, "orchestrator-debit-resp");
-  const creditRespConsumer = await createConsumer(kafka, "orchestrator-credit-resp");
-  const reversalRespConsumer = await createConsumer(kafka, "orchestrator-reversal-resp");
+  const debitConsumer = await createConsumer(kafka, "bank-adapter-debit");
+  const creditConsumer = await createConsumer(kafka, "bank-adapter-credit");
+  const reversalConsumer = await createConsumer(kafka, "bank-adapter-reversal");
 
-  const payHandler = createHandler({
-    prefix: "pay",
-    schema: PayMessageSchema,
-    label: "PAY_REQUEST",
+  const debitHandler = createHandler({
+    prefix: "ba-debit",
+    schema: DebitRequestSchema,
+    label: "DEBIT_REQUEST",
     db,
     logger,
-    process: (msg) => processor.handlePayRequest(msg.body, msg.header.orgId),
+    process: (msg) => bankPool.sendDebit(msg),
   });
 
-  const debitRespHandler = createHandler({
-    prefix: "debit-resp",
-    schema: DebitResponseSchema,
-    label: "DEBIT_RESPONSE",
+  const creditHandler = createHandler({
+    prefix: "ba-credit",
+    schema: CreditRequestSchema,
+    label: "CREDIT_REQUEST",
     db,
     logger,
-    process: (msg) => processor.handleDebitResponse(msg),
+    process: (msg) => bankPool.sendCredit(msg),
   });
 
-  const creditRespHandler = createHandler({
-    prefix: "credit-resp",
-    schema: CreditResponseSchema,
-    label: "CREDIT_RESPONSE",
+  const reversalHandler = createHandler({
+    prefix: "ba-reversal",
+    schema: ReversalRequestSchema,
+    label: "REVERSAL_REQUEST",
     db,
     logger,
-    process: (msg) => processor.handleCreditResponse(msg),
-  });
-
-  const reversalRespHandler = createHandler({
-    prefix: "reversal-resp",
-    schema: ReversalResponseSchema,
-    label: "REVERSAL_RESPONSE",
-    db,
-    logger,
-    process: (msg) => processor.handleReversalResponse(msg),
+    process: (msg) => bankPool.sendReversal(msg),
   });
 
   await Promise.all([
-    runConsumer(payConsumer, TOPICS.PAY_REQUEST, payHandler, dlqProducer),
-    runConsumer(debitRespConsumer, TOPICS.DEBIT_RESPONSE, debitRespHandler, dlqProducer),
-    runConsumer(creditRespConsumer, TOPICS.CREDIT_RESPONSE, creditRespHandler, dlqProducer),
-    runConsumer(reversalRespConsumer, TOPICS.REVERSAL_RESPONSE, reversalRespHandler, dlqProducer),
+    runConsumer(debitConsumer, TOPICS.DEBIT_REQUEST, debitHandler, dlqProducer),
+    runConsumer(creditConsumer, TOPICS.CREDIT_REQUEST, creditHandler, dlqProducer),
+    runConsumer(reversalConsumer, TOPICS.REVERSAL_REQUEST, reversalHandler, dlqProducer),
   ]);
 
-  logger.info("All orchestrator consumers started");
+  logger.info("All bank adapter consumers started");
 
   return {
     async shutdown() {
-      await payConsumer.disconnect();
-      await debitRespConsumer.disconnect();
-      await creditRespConsumer.disconnect();
-      await reversalRespConsumer.disconnect();
+      await debitConsumer.disconnect();
+      await creditConsumer.disconnect();
+      await reversalConsumer.disconnect();
       await dlqProducer.disconnect();
     },
   };

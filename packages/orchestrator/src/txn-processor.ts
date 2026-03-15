@@ -110,6 +110,7 @@ export function createTxnProcessor(
           payeeVpa: payRequest.payeeVpa,
           payeeIfsc: payeeVpa.ifsc,
           payeeBankOrgId: payeeVpa.bankOrgId,
+          payeeAccountRef: payeeVpa.accountNumberEncrypted,
           amountPaise: payRequest.amountPaise.toString(),
           currency: payRequest.currency ?? "INR",
           note: payRequest.note,
@@ -181,6 +182,8 @@ export function createTxnProcessor(
         where: eq(schema.transactions.txnId, message.txnId),
       });
 
+      const payerVpaData = txn ? await vpaClient.resolve(txn.payerVpa) : null;
+
       await transitionState(
         message.txnId, "CREDIT_FAILED", "REVERSAL_INITIATED",
         { reason: "Credit failed, initiating reversal" },
@@ -190,6 +193,11 @@ export function createTxnProcessor(
             txnId: message.txnId,
             originalRrn: txn?.rrn ?? "",
             reason: `Credit failed: ${message.responseCode}`,
+            payerBankOrgId: payerVpaData?.bankOrgId ?? "",
+            payerAccountRef: payerVpaData?.accountNumberEncrypted ?? "",
+            payerIfsc: txn?.payerIfsc ?? "",
+            amountPaise: txn?.amountPaise?.toString() ?? "0",
+            currency: txn?.currency ?? "INR",
           },
         },
       );
@@ -206,10 +214,30 @@ export function createTxnProcessor(
     logger.info({ txnId: message.txnId }, "Transaction completed");
   }
 
+  async function handleReversalResponse(message: {
+    txnId: string;
+    success: boolean;
+    responseCode: string;
+  }): Promise<void> {
+    if (message.success) {
+      await transitionState(message.txnId, "REVERSAL_INITIATED", "REVERSED", {
+        responseCode: message.responseCode,
+      });
+      logger.info({ txnId: message.txnId }, "Transaction reversed");
+    } else {
+      await transitionState(message.txnId, "REVERSAL_INITIATED", "DEEMED", {
+        responseCode: message.responseCode,
+        reason: "Reversal failed, marked as deemed",
+      });
+      logger.warn({ txnId: message.txnId }, "Reversal failed, transaction deemed");
+    }
+  }
+
   return {
     handlePayRequest,
     handleDebitResponse,
     handleCreditResponse,
+    handleReversalResponse,
     transitionState,
   };
 }

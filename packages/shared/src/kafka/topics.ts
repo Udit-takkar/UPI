@@ -6,6 +6,7 @@ export const TOPICS = {
   CREDIT_REQUEST: "txn.credit.request",
   CREDIT_RESPONSE: "txn.credit.response",
   REVERSAL_REQUEST: "txn.reversal.request",
+  REVERSAL_RESPONSE: "txn.reversal.response",
   STATUS_QUERY: "txn.status.query",
   CALLBACK: "txn.callback",
   DLQ: "txn.dlq",

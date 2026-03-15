@@ -27,3 +27,10 @@ export const CreditResponseSchema = z.object({
   responseCode: z.string(),
 });
 export type CreditResponse = z.infer<typeof CreditResponseSchema>;
+
+export const ReversalResponseSchema = z.object({
+  txnId: z.uuid(),
+  success: z.boolean(),
+  responseCode: z.string(),
+});
+export type ReversalResponse = z.infer<typeof ReversalResponseSchema>;
