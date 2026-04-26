@@ -7,7 +7,7 @@ import { CircuitOpenError } from "./circuit-breaker.js";
 import { BulkheadFullError } from "./bulkhead.js";
 import type { BankClient } from "./bank-client.js";
 import type { OrgResolver } from "./org-resolver.js";
-import type { DebitRequest, CreditRequest, ReversalRequest } from "./kafka-schemas.js";
+import type { DebitRequest, CreditRequest, ReversalRequest, ReconStatusRequest } from "./kafka-schemas.js";
 
 const RESPONSE_CODES = {
   BANK_UNAVAILABLE: "ZS",
@@ -160,7 +160,51 @@ export function createBankPool(
     }
   }
 
-  return { sendDebit, sendCredit, sendReversal };
+  async function sendStatusQuery(message: ReconStatusRequest): Promise<void> {
+    const org = await orgResolver.resolve(message.bankOrgId);
+
+    if (!org.apiEndpoint) {
+      throw new Error(`No apiEndpoint for bank ${message.bankOrgId}`);
+    }
+
+    try {
+      const bankResponse = await resilienceLayer.execute(
+        message.bankOrgId,
+        (signal) =>
+          bankClient.statusQuery(org.apiEndpoint!, {
+            txnId: message.txnId,
+            rrn: message.rrn,
+          }, signal),
+      );
+
+      await sendMessage(deps.kafkaProducer, TOPICS.RECON_STATUS_RESPONSE, message.txnId, {
+        txnId: message.txnId,
+        rrn: message.rrn,
+        found: bankResponse.found,
+        operation: bankResponse.operation,
+        bankStatus: bankResponse.status,
+        amountPaise: bankResponse.amountPaise,
+        responseCode: bankResponse.responseCode,
+      });
+
+      logger.info({ txnId: message.txnId, found: bankResponse.found }, "Recon status response published");
+    } catch (err) {
+      const responseCode = mapErrorToResponseCode(err);
+      logger.error({ txnId: message.txnId, err, responseCode }, "Recon status query failed");
+
+      await sendMessage(deps.kafkaProducer, TOPICS.RECON_STATUS_RESPONSE, message.txnId, {
+        txnId: message.txnId,
+        rrn: message.rrn,
+        found: false,
+        operation: null,
+        bankStatus: null,
+        amountPaise: null,
+        responseCode,
+      });
+    }
+  }
+
+  return { sendDebit, sendCredit, sendReversal, sendStatusQuery };
 }
 
 export type BankPool = ReturnType<typeof createBankPool>;

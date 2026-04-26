@@ -124,6 +124,12 @@ export const transactions = pgTable(
       .on(table.expiresAt)
       .where(sql`status IN ('RECEIVED', 'VPA_RESOLVED')`),
     index("idx_txn_psp_org").on(table.pspOrgId, table.createdAt),
+    index("idx_txn_deemed")
+      .on(table.status, table.updatedAt)
+      .where(sql`status = 'DEEMED'`),
+    index("idx_txn_completed_at")
+      .on(table.completedAt)
+      .where(sql`status = 'COMPLETED'`),
   ],
 );
 
@@ -179,6 +185,7 @@ export const registeredOrgs = pgTable(
     publicKeyPem: text("public_key_pem"),
     mtlsCertFingerprint: varchar("mtls_cert_fingerprint", { length: 128 }),
     apiEndpoint: varchar("api_endpoint", { length: 512 }),
+    callbackUrl: varchar("callback_url", { length: 2048 }),
     drEndpoint: varchar("dr_endpoint", { length: 512 }),
     ipWhitelist: text("ip_whitelist").array(),
     maxTps: integer("max_tps").notNull().default(100),
@@ -341,5 +348,63 @@ export const disputes = pgTable(
     index("idx_dispute_status")
       .on(table.status)
       .where(sql`status IN ('RAISED', 'UNDER_REVIEW')`),
+  ],
+);
+
+// ── Reconciliation Tables ────────────────────────────
+
+export const reconMismatchTypeEnum = pgEnum("recon_mismatch_type", [
+  "PHANTOM",
+  "MISSED",
+  "AMOUNT_MISMATCH",
+  "STATUS_MISMATCH",
+]);
+
+export const reconReports = pgTable(
+  "recon_reports",
+  {
+    id: bigint("id", { mode: "bigint" })
+      .generatedAlwaysAsIdentity()
+      .primaryKey(),
+    batchId: uuid("batch_id").notNull(),
+    bankOrgId: uuid("bank_org_id")
+      .notNull()
+      .references(() => registeredOrgs.orgId, { onDelete: "restrict" }),
+    cycleStart: timestamp("cycle_start", { withTimezone: true }).notNull(),
+    cycleEnd: timestamp("cycle_end", { withTimezone: true }).notNull(),
+    totalSwitchTxns: integer("total_switch_txns").notNull(),
+    totalBankTxns: integer("total_bank_txns").notNull(),
+    matchedCount: integer("matched_count").notNull(),
+    mismatchCount: integer("mismatch_count").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index("idx_recon_batch").on(table.batchId)],
+);
+
+export const reconMismatches = pgTable(
+  "recon_mismatches",
+  {
+    id: bigint("id", { mode: "bigint" })
+      .generatedAlwaysAsIdentity()
+      .primaryKey(),
+    reportId: bigint("report_id", { mode: "bigint" })
+      .notNull()
+      .references(() => reconReports.id, { onDelete: "restrict" }),
+    rrn: varchar("rrn", { length: 12 }).notNull(),
+    mismatchType: reconMismatchTypeEnum("mismatch_type").notNull(),
+    switchAmountPaise: bigint("switch_amount_paise", { mode: "bigint" }),
+    bankAmountPaise: bigint("bank_amount_paise", { mode: "bigint" }),
+    switchStatus: txnStatusEnum("switch_status"),
+    bankStatus: varchar("bank_status", { length: 50 }),
+    details: jsonb("details"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idx_recon_mismatch_report").on(table.reportId),
+    index("idx_recon_mismatch_rrn").on(table.rrn),
   ],
 );

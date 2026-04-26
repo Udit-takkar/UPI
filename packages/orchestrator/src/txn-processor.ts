@@ -8,6 +8,7 @@ import type { PayRequest } from "@repo/shared/schemas";
 import { applyStateTransition, type TxnUpdates } from "./state-transition.js";
 import { insertAuditEntry } from "./audit.js";
 import { insertOutboxEvent, type OutboundEvent } from "./outbox.js";
+import { isTerminalState, insertPendingCallback } from "./callback.js";
 import type { OrchestratorDeps } from "./deps.js";
 import type { VpaClient } from "./vpa-client.js";
 import type pino from "pino";
@@ -33,6 +34,22 @@ export function createTxnProcessor(
       await applyStateTransition(tx, txnId, fromState, toState, txnUpdates);
       await insertAuditEntry(tx, txnId, fromState, toState, metadata);
       await insertOutboxEvent(tx, txnId, fromState, toState, metadata, outbound);
+
+      if (isTerminalState(toState)) {
+        const txn = await tx.query.transactions.findFirst({
+          where: eq(schema.transactions.txnId, txnId),
+        });
+        if (txn) {
+          await insertPendingCallback(tx, txn.pspOrgId, txnId, "TXN_STATUS", {
+            txnId,
+            orgTxnId: txn.orgTxnId,
+            status: toState,
+            responseCode: metadata.responseCode ?? null,
+            amountPaise: txn.amountPaise.toString(),
+            completedAt: new Date().toISOString(),
+          });
+        }
+      }
     });
 
     logger.info({ txnId, fromState, toState }, "State transition");

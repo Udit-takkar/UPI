@@ -7,7 +7,9 @@
     "build": "tsc",
     "check-types": "tsc --noEmit",
     "dev": "tsx watch src/index.ts",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "recon:batch": "tsx src/run-batch-recon.ts",
+    "settlement:run": "tsx src/run-settlement.ts"
   },
   "dependencies": {
     "@repo/shared": "workspace:*",

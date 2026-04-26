@@ -12,6 +12,8 @@ import type {
   settlementBatches,
   settlementEntries,
   disputes,
+  reconReports,
+  reconMismatches,
 } from './schema.js';
 
 export type Transaction = typeof transactions.$inferSelect;
@@ -55,5 +57,12 @@ export type CallbackStatus = PendingCallback['status'];
 export type DisputeType = Dispute['disputeType'];
 export type DisputeStatus = Dispute['status'];
 export type SettlementStatus = SettlementBatch['status'];
+
+export type ReconReport = typeof reconReports.$inferSelect;
+export type NewReconReport = typeof reconReports.$inferInsert;
+
+export type ReconMismatch = typeof reconMismatches.$inferSelect;
+export type NewReconMismatch = typeof reconMismatches.$inferInsert;
+export type ReconMismatchType = ReconMismatch['mismatchType'];
 
 export type DrizzleTransaction = Parameters<Parameters<Database["transaction"]>[0]>[0];

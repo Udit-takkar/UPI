@@ -3,6 +3,8 @@ import type { FastifyInstance } from "fastify";
 import { debitRoute } from "./routes/debit.js";
 import { creditRoute } from "./routes/credit.js";
 import { reversalRoute } from "./routes/reversal.js";
+import { statusRoute } from "./routes/status.js";
+import { dumpRoute } from "./routes/dump.js";
 import { controlRoute } from "./routes/control.js";
 
 export async function createMockBankServer(): Promise<FastifyInstance> {
@@ -17,6 +19,8 @@ export async function createMockBankServer(): Promise<FastifyInstance> {
   debitRoute(app);
   creditRoute(app);
   reversalRoute(app);
+  statusRoute(app);
+  dumpRoute(app);
   controlRoute(app);
 
   app.get("/health", async () => ({ status: "ok", service: "mock-bank" }));

@@ -11,6 +11,8 @@ export const TOPICS = {
   CALLBACK: "txn.callback",
   DLQ: "txn.dlq",
   OUTBOX: "outbox.events",
+  RECON_STATUS_REQUEST: "recon.status.request",
+  RECON_STATUS_RESPONSE: "recon.status.response",
   AUDIT_LOG: "audit.log",
 } as const;
 

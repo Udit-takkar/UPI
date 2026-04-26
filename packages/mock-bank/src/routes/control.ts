@@ -1,10 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { setScenario, clearScenarios } from "../scenarios.js";
+import { clearLedger } from "../ledger.js";
 
 const SetScenarioSchema = z.object({
   bankSlug: z.string(),
-  operation: z.enum(["debit", "credit", "reversal"]),
+  operation: z.enum(["debit", "credit", "reversal", "status"]),
   behavior: z.enum(["success", "failure", "timeout", "error"]),
   responseCode: z.string().optional(),
   delayMs: z.number().int().min(0).optional(),
@@ -25,6 +26,7 @@ export function controlRoute(app: FastifyInstance) {
 
   app.delete("/admin/scenarios", async () => {
     clearScenarios();
-    return { status: "ok", message: "All scenarios cleared" };
+    clearLedger();
+    return { status: "ok", message: "All scenarios and ledger cleared" };
   });
 }

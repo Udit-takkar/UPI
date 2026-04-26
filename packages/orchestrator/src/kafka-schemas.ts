@@ -34,3 +34,21 @@ export const ReversalResponseSchema = z.object({
   responseCode: z.string(),
 });
 export type ReversalResponse = z.infer<typeof ReversalResponseSchema>;
+
+export const StatusQueryMessageSchema = z.object({
+  txnId: z.uuid().optional(),
+  orgTxnId: z.string().optional(),
+  orgId: z.uuid(),
+});
+export type StatusQueryMessage = z.infer<typeof StatusQueryMessageSchema>;
+
+export const ReconStatusResponseSchema = z.object({
+  txnId: z.uuid(),
+  rrn: z.string(),
+  found: z.boolean(),
+  operation: z.string().nullable(),
+  bankStatus: z.string().nullable(),
+  amountPaise: z.string().nullable(),
+  responseCode: z.string(),
+});
+export type ReconStatusResponse = z.infer<typeof ReconStatusResponseSchema>;

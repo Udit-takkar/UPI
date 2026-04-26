@@ -4,6 +4,7 @@ import type { Database } from "@repo/shared/db";
 import type { TxnStatus } from "@repo/shared/db/types";
 import { insertAuditEntry } from "./audit.js";
 import { insertOutboxEvent } from "./outbox.js";
+import { insertPendingCallback } from "./callback.js";
 import type pino from "pino";
 
 const POLL_INTERVAL_MS = 10_000;
@@ -21,6 +22,9 @@ export function startExpiryWorker(db: Database, logger: pino.Logger) {
           .select({
             txnId: schema.transactions.txnId,
             status: schema.transactions.status,
+            pspOrgId: schema.transactions.pspOrgId,
+            orgTxnId: schema.transactions.orgTxnId,
+            amountPaise: schema.transactions.amountPaise,
           })
           .from(schema.transactions)
           .where(
@@ -31,7 +35,7 @@ export function startExpiryWorker(db: Database, logger: pino.Logger) {
           )
           .limit(BATCH_SIZE);
 
-        for (const { txnId, status: currentStatus } of expired) {
+        for (const { txnId, status: currentStatus, pspOrgId, orgTxnId, amountPaise } of expired) {
           try {
             await db.transaction(async (tx) => {
               const result = await tx
@@ -55,6 +59,14 @@ export function startExpiryWorker(db: Database, logger: pino.Logger) {
               const metadata = { reason: "Transaction expired" };
               await insertAuditEntry(tx, txnId, currentStatus, "EXPIRED", metadata);
               await insertOutboxEvent(tx, txnId, currentStatus, "EXPIRED", metadata);
+              await insertPendingCallback(tx, pspOrgId, txnId, "TXN_STATUS", {
+                txnId,
+                orgTxnId,
+                status: "EXPIRED",
+                responseCode: null,
+                amountPaise: amountPaise.toString(),
+                completedAt: new Date().toISOString(),
+              });
             });
 
             logger.info({ txnId, fromState: currentStatus }, "Transaction expired");

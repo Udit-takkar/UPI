@@ -9,6 +9,7 @@ import {
   DebitRequestSchema,
   CreditRequestSchema,
   ReversalRequestSchema,
+  ReconStatusRequestSchema,
 } from "./kafka-schemas.js";
 import type { BankPool } from "./bank-pool.js";
 import type pino from "pino";
@@ -93,6 +94,7 @@ export async function startConsumers(
   const debitConsumer = await createConsumer(kafka, "bank-adapter-debit");
   const creditConsumer = await createConsumer(kafka, "bank-adapter-credit");
   const reversalConsumer = await createConsumer(kafka, "bank-adapter-reversal");
+  const reconStatusConsumer = await createConsumer(kafka, "bank-adapter-recon-status");
 
   const debitHandler = createHandler({
     prefix: "ba-debit",
@@ -121,10 +123,20 @@ export async function startConsumers(
     process: (msg) => bankPool.sendReversal(msg),
   });
 
+  const reconStatusHandler = createHandler({
+    prefix: "ba-recon-status",
+    schema: ReconStatusRequestSchema,
+    label: "RECON_STATUS_REQUEST",
+    db,
+    logger,
+    process: (msg) => bankPool.sendStatusQuery(msg),
+  });
+
   await Promise.all([
     runConsumer(debitConsumer, TOPICS.DEBIT_REQUEST, debitHandler, dlqProducer),
     runConsumer(creditConsumer, TOPICS.CREDIT_REQUEST, creditHandler, dlqProducer),
     runConsumer(reversalConsumer, TOPICS.REVERSAL_REQUEST, reversalHandler, dlqProducer),
+    runConsumer(reconStatusConsumer, TOPICS.RECON_STATUS_REQUEST, reconStatusHandler, dlqProducer),
   ]);
 
   logger.info("All bank adapter consumers started");
@@ -134,6 +146,7 @@ export async function startConsumers(
       await debitConsumer.disconnect();
       await creditConsumer.disconnect();
       await reversalConsumer.disconnect();
+      await reconStatusConsumer.disconnect();
       await dlqProducer.disconnect();
     },
   };

@@ -7,6 +7,11 @@ import { createVpaClient } from "./vpa-client.js";
 import { startConsumers } from "./consumer.js";
 import { startOutboxPublisher } from "./outbox-publisher.js";
 import { startExpiryWorker } from "./expiry-worker.js";
+import { createOrgResolver } from "./org-resolver.js";
+import { createStatusQueryHandler } from "./status-query-handler.js";
+import { startCallbackWorker } from "./callback-worker.js";
+import { createReconResponseHandler } from "./recon-response-handler.js";
+import { startReconWorker } from "./recon-worker.js";
 
 const logger = createLogger("orchestrator");
 
@@ -32,9 +37,15 @@ async function main() {
     logger,
   );
 
-  const consumers = await startConsumers(kafka, processor, db, logger);
+  const orgResolver = createOrgResolver(db, logger);
+  const statusQueryHandler = createStatusQueryHandler(db, logger);
+  const reconResponseHandler = createReconResponseHandler(db, logger);
+
+  const consumers = await startConsumers(kafka, processor, statusQueryHandler, reconResponseHandler, db, logger);
   const outbox = startOutboxPublisher(db, kafkaProducer, logger);
   const expiry = startExpiryWorker(db, logger);
+  const callbackWorker = startCallbackWorker(db, orgResolver, logger);
+  const reconWorker = startReconWorker(db, kafkaProducer, logger);
 
   logger.info("Orchestrator started");
 
@@ -43,6 +54,8 @@ async function main() {
     await consumers.shutdown();
     await outbox.shutdown();
     await expiry.shutdown();
+    await callbackWorker.shutdown();
+    await reconWorker.shutdown();
     await kafkaProducer.disconnect();
     redis.disconnect();
     process.exit(0);

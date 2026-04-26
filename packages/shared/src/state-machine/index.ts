@@ -14,7 +14,7 @@ export const VALID_TRANSITIONS: Record<TxnStatus, TxnStatus[]> = {
   COMPLETED: [],
   FAILED: [],
   EXPIRED: [],
-  DEEMED: [],
+  DEEMED: ["COMPLETED", "REVERSED", "FAILED"],
 };
 
 export function canTransition(from: TxnStatus, to: TxnStatus): boolean {

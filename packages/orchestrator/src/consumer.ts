@@ -10,8 +10,12 @@ import {
   DebitResponseSchema,
   CreditResponseSchema,
   ReversalResponseSchema,
+  StatusQueryMessageSchema,
+  ReconStatusResponseSchema,
 } from "./kafka-schemas.js";
 import type { TxnProcessor } from "./txn-processor.js";
+import type { StatusQueryHandler } from "./status-query-handler.js";
+import type { ReconResponseHandler } from "./recon-response-handler.js";
 import type pino from "pino";
 
 const MAX_RETRIES = 3;
@@ -86,6 +90,8 @@ function createHandler<T>(opts: {
 export async function startConsumers(
   kafka: Kafka,
   processor: TxnProcessor,
+  statusQueryHandler: StatusQueryHandler,
+  reconResponseHandler: ReconResponseHandler,
   db: Database,
   logger: pino.Logger,
 ) {
@@ -95,6 +101,8 @@ export async function startConsumers(
   const debitRespConsumer = await createConsumer(kafka, "orchestrator-debit-resp");
   const creditRespConsumer = await createConsumer(kafka, "orchestrator-credit-resp");
   const reversalRespConsumer = await createConsumer(kafka, "orchestrator-reversal-resp");
+  const statusQueryConsumer = await createConsumer(kafka, "orchestrator-status-query");
+  const reconRespConsumer = await createConsumer(kafka, "orchestrator-recon-status-resp");
 
   const payHandler = createHandler({
     prefix: "pay",
@@ -132,11 +140,31 @@ export async function startConsumers(
     process: (msg) => processor.handleReversalResponse(msg),
   });
 
+  const statusQueryHandler_ = createHandler({
+    prefix: "status-query",
+    schema: StatusQueryMessageSchema,
+    label: "STATUS_QUERY",
+    db,
+    logger,
+    process: (msg) => statusQueryHandler.handleStatusQuery(msg),
+  });
+
+  const reconRespHandler = createHandler({
+    prefix: "recon-status-resp",
+    schema: ReconStatusResponseSchema,
+    label: "RECON_STATUS_RESPONSE",
+    db,
+    logger,
+    process: (msg) => reconResponseHandler.handleReconStatusResponse(msg),
+  });
+
   await Promise.all([
     runConsumer(payConsumer, TOPICS.PAY_REQUEST, payHandler, dlqProducer),
     runConsumer(debitRespConsumer, TOPICS.DEBIT_RESPONSE, debitRespHandler, dlqProducer),
     runConsumer(creditRespConsumer, TOPICS.CREDIT_RESPONSE, creditRespHandler, dlqProducer),
     runConsumer(reversalRespConsumer, TOPICS.REVERSAL_RESPONSE, reversalRespHandler, dlqProducer),
+    runConsumer(statusQueryConsumer, TOPICS.STATUS_QUERY, statusQueryHandler_, dlqProducer),
+    runConsumer(reconRespConsumer, TOPICS.RECON_STATUS_RESPONSE, reconRespHandler, dlqProducer),
   ]);
 
   logger.info("All orchestrator consumers started");
@@ -147,6 +175,8 @@ export async function startConsumers(
       await debitRespConsumer.disconnect();
       await creditRespConsumer.disconnect();
       await reversalRespConsumer.disconnect();
+      await statusQueryConsumer.disconnect();
+      await reconRespConsumer.disconnect();
       await dlqProducer.disconnect();
     },
   };

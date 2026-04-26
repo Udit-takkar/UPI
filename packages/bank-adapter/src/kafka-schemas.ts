@@ -47,3 +47,21 @@ export const BankApiResponseSchema = z.object({
   responseCode: z.string(),
 });
 export type BankApiResponse = z.infer<typeof BankApiResponseSchema>;
+
+export const ReconStatusRequestSchema = z.object({
+  txnId: z.uuid(),
+  rrn: z.string(),
+  bankOrgId: z.uuid(),
+});
+export type ReconStatusRequest = z.infer<typeof ReconStatusRequestSchema>;
+
+export const BankStatusResponseSchema = z.object({
+  txnId: z.string(),
+  rrn: z.string(),
+  found: z.boolean(),
+  operation: z.enum(["debit", "credit", "reversal"]).nullable(),
+  status: z.enum(["SUCCESS", "FAILED"]).nullable(),
+  amountPaise: z.string().nullable(),
+  responseCode: z.string(),
+});
+export type BankStatusResponse = z.infer<typeof BankStatusResponseSchema>;

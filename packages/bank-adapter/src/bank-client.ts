@@ -1,5 +1,8 @@
 import type pino from "pino";
-import { BankApiResponseSchema, type BankApiResponse } from "./kafka-schemas.js";
+import {
+  BankApiResponseSchema, type BankApiResponse,
+  BankStatusResponseSchema, type BankStatusResponse,
+} from "./kafka-schemas.js";
 import { BankCallError } from "./resilience.js";
 
 interface DebitCreditRequest {
@@ -63,6 +66,27 @@ export function createBankClient(logger: pino.Logger) {
       signal: AbortSignal,
     ): Promise<BankApiResponse> {
       return callBank(`${baseUrl}/api/v1/reversal`, request, signal, logger);
+    },
+
+    async statusQuery(
+      baseUrl: string,
+      request: { txnId: string; rrn: string },
+      signal: AbortSignal,
+    ): Promise<BankStatusResponse> {
+      const res = await fetch(`${baseUrl}/api/v1/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request),
+        signal,
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        logger.error({ url: `${baseUrl}/api/v1/status`, status: res.status, body: text }, "Bank status query error");
+        throw new BankCallError(`Bank status API returned ${res.status}`, res.status);
+      }
+
+      return BankStatusResponseSchema.parse(await res.json());
     },
   };
 }

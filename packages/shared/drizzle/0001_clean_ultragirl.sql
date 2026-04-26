@@ -1,0 +1,1 @@
+ALTER TABLE "registered_orgs" ADD COLUMN "callback_url" varchar(2048);

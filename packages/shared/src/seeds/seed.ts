@@ -17,6 +17,12 @@ const ORGS = [
   { displayName: "Mock PNB", orgType: "BANK" as const, maxTps: 50 },
 ];
 
+const PSP_CALLBACK_URLS: Record<string, string> = {
+  "Mock GPay": "http://localhost:4001/callback/mock-gpay",
+  "Mock PhonePe": "http://localhost:4001/callback/mock-phonepe",
+  "Mock Paytm": "http://localhost:4001/callback/mock-paytm",
+};
+
 const VPA_HANDLES: Record<string, string> = {
   "Mock GPay": "gpay",
   "Mock PhonePe": "phonepe",
@@ -77,6 +83,7 @@ async function seed() {
       status: "ACTIVE",
       publicKeyPem: publicKey,
       apiEndpoint: `http://localhost:4000/mock/${org.displayName.toLowerCase().replace(/\s+/g, "-")}`,
+      callbackUrl: PSP_CALLBACK_URLS[org.displayName] ?? null,
       drEndpoint: `http://localhost:4000/mock/${org.displayName.toLowerCase().replace(/\s+/g, "-")}/dr`,
       maxTps: org.maxTps,
     });
